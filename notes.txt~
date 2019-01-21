@@ -1,0 +1,1 @@
+yc1 = full(sparse(y,1:100,1f0))

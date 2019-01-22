@@ -53,3 +53,12 @@ https://discourse.julialang.org/t/learning-bayesian-data-analysis-using-julia/53
 https://discourse.julialang.org/t/psa-replacement-of-ind2sub-sub2ind-in-julia-0-7/14666
 
 RSA key with id efb66595564c5646f8fae19c4d619d60bc6b850d not found
+
+soss.jl: https://cscherrer.github.io/
+mxnet J1.0: https://github.com/apache/incubator-mxnet/issues/13836
+
+https://julialang.org/learning/
+http://ucidatascienceinitiative.github.io/IntroToJulia/
+
+using NBInclude
+@nbinclude("myfile.ipynb")

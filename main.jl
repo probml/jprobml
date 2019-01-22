@@ -5,7 +5,7 @@ include("MurphykUtils.jl")
 
 function cube(x)
     y = x^3
-    println("cube of $x = $y !!")
+    println("cube of $x = $y?")
 end
 
 square(3)

@@ -10,13 +10,22 @@ using StatPlots
 end
 
 #  Run sampler, collect results
-c1 = sample(gdemo(1.5, 2), SMC(1000))
-c2 = sample(gdemo(1.5, 2), PG(10,1000))
-c3 = sample(gdemo(1.5, 2), HMC(1000, 0.1, 5))
-c4 = sample(gdemo(1.5, 2), Gibbs(1000, PG(10, 2, :m), HMC(2, 0.1, 5, :s)))
-c5 = sample(gdemo(1.5, 2), HMCDA(1000, 0.15, 0.65))
-c6 = sample(gdemo(1.5, 2), NUTS(1000,  0.65))
-
+niters = 10
+nparticles = 5
+x = 1.5; y = 2;
+@info "Starting SMC"
+c1 = sample(gdemo(x, y), SMC(niters))
+@info "Starting PG"
+c2 = sample(gdemo(x, y), PG(nparticles, niters))
+@info "Starting HMC"
+c3 = sample(gdemo(x, y), HMC(niters, 0.1, 5))
+@info "Staring Gibbs"
+c4 = sample(gdemo(x, y), Gibbs(niters, PG(10, 2, :m), HMC(2, 0.1, 5, :s)))
+@info "starting HMCDA"
+c5 = sample(gdemo(x, y), HMCDA(niters, 0.15, 0.65))
+@info "Starting NUTS"
+c6 = sample(gdemo(x, y), NUTS(niters,  0.65))
+@info "Done"
 # Summarise results (currently requires the master branch from MCMCChain)
 describe(c3)
 

@@ -97,20 +97,22 @@ function ind2sub(shape, lndx)
 end
 
 function ind2sub_test()
-    shape = [3,4,2]
-    n = prod(shape)
-    for i=1:n
-        cndx = ind2sub(shape, i)
-        subs = ind2sub_array(shape, i)
-        @assert cndx == Tuple(subs)
+    shapes = ( (3,4,2), (1,3,1,4) )
+    for shape in shapes
+        n = prod(shape)
+        for i=1:n
+            cndx = ind2sub(shape, i)
+            subs = ind2sub_array(shape, i)
+            @assert cndx == Tuple(subs)
+        end
     end
 end
 
 function ind2subv(shape, indices)
     """Map linear indices to cartesian.
     shape: d-tuple with size of each dimension.
-    indices: n-tuple with linear indices.
-    Returns: array of length n, each entry is a d-tuple of cartesian indices.
+    indices: n-list with linear indices.
+    Returns: n-vector of d-tuples with cartesian indices.
     Similar to this matlab function:
     https://github.com/probml/pmtk3/blob/master/matlabTools/util/ind2subv.m
     """
@@ -130,10 +132,10 @@ end
 
 function ind2subv_test()
     sub = ind2subv([3 3], 1:9);
-    @assert sub == [(1,1), (1, 2), 1 3; 2 1; 2 2; 2 3; 3 1; 3 2; 3 3]
+    @assert sub == [ (1, 1), (2, 1), (3, 1), (1, 2), (2, 2), (3, 2), (1, 3), (2, 3), (3, 3)]
 
     sub = ind2subv([2 1 3], 1:6)
-    @assert sub == [1 1 1; 1 1 2; 1 1 3; 2 1 1; 2 1 2; 2 1 3]
+    @assert sub == [(1, 1, 1), (2, 1, 1), (1, 1, 2), (2, 1, 2), (1, 1, 3), (2, 1, 3)]
 end
 
 
@@ -193,7 +195,7 @@ function mystrides(shape::Array{Int,1}; rowmajor=true)::Array{Int}
 end
 
 
-function sub2ind(shape::Array{Int,1}, subscripts::Array{Int,1})::Int
+function sub2ind_array(shape::Array{Int,1}, subscripts::Array{Int,1})::Int
     # Translated from
     # https://stackoverflow.com/questions/46782444/how-to-convert-a-linear-index-to-subscripts-with-support-for-negative-strides
     n = length(shape)
@@ -209,37 +211,63 @@ function sub2ind(shape::Array{Int,1}, subscripts::Array{Int,1})::Int
 end
 
 
-
-# Can we not leverage built in functions?
-#https://github.com/JuliaLang/julia/blob/4247bbafe650930b9f6da4feecf0a7dcc37e5204/base/abstractarray.jl#L1672
-
-
-function subv2ind(shape::Array{Int,1}, subs::Array{Int,2})::Array{Int}
+function subv2ind_array(shape::Array{Int,1}, subs::Array{Int,2})::Array{Int}
     #https://github.com/tminka/lightspeed/blob/master/subv2ind.m
     n = size(subs, 1)
     ndx = zeros(n)
     for i=1:n
-        ndx[i] = sub2ind(shape, subs[i,:])
+        ndx[i] = sub2ind_array(shape, subs[i,:])
     end
     return ndx
 end
 
 
-function subv2ind_test()
-    shape = [3,4,2]
-    K = prod(shape)
-    subs = ind2subv(shape, 1:K)
-    ndx = subv2ind(shape, subs)
-    @assert ndx == 1:K
+function subv2ind_array_test()
+    shapes = ( [3,4,2], [4,1,5,2])
+    for shape in shapes
+        K = prod(shape)
+        subs = ind2subv_array(shape, 1:K)
+        ndx = subv2ind_array(shape, subs)
+        @assert ndx == 1:K
+    end
+end
 
-    shape = [4,1,5,2]
-    K = prod(shape)
-    subs = ind2subv(shape, 1:K)
-    ndx = subv2ind(shape, subs)
-    @assert ndx == 1:K
+function sub2ind(shape, cndx)
+    lndx = LinearIndices(Dims(shape))
+    return lndx[cndx...]
+end
+
+function subv2ind(shape, cindices)
+    """Return linear indices given vector of cartesian indices.
+    shape: d-tuple of dimenions.
+    cindices: n-vector of d-tuples, each containing cartesian indices.
+    Returns: n-vector of linear indices.
+    Similar to this matlab function:
+    https://github.com/tminka/lightspeed/blob/master/subv2ind.m
+    """
+    lndx = LinearIndices(Dims(shape))
+    n = length(cindices)
+    out = Array{Int}(undef, n)
+    for i = 1:n
+        out[i] = lndx[cindices[i]...]
+    end
+    return out
+end
+
+function subv2ind_test()
+    shapes = [(3,4,2), (4,1,5,2)]
+    for shape in shapes
+        K = prod(shape)
+        subs = ind2subv(shape, 1:K)
+        ndx = subv2ind(shape, subs)
+        @assert ndx == 1:K
+    end
 end
 
 
-#subv2ind_test()
+ind2subv_array_test()
+ind2subv_test()
+subv2ind_array_test()
+subv2ind_test()
 
 println("all tests passed")

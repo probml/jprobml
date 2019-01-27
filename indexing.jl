@@ -264,6 +264,43 @@ function subv2ind_test()
     end
 end
 
+function cart2lin(shape, cindices)
+    """
+    Transform vector of cartesian indices to linear indices, cf ind2subv.
+    Example:
+    cart2lin([3,4,2],[CI(3,1,1), CI(2,2,1)]) =  [3, 5]
+    """
+    lndx = LinearIndices(Dims(shape))
+    return getindex.(Ref(lndx), cindices)
+end
+
+function lin2cart(shape, indices)
+    """
+    Transform linear indices to cartesian ,cf ind2subv.
+    Example:
+    lin2cart((3,4,2),[3,5]) = [ CI(3, 1, 1), CI(2, 2, 1)]
+    """
+    # Thanks to James Bradbury for this code
+    CI = CartesianIndices(Dims(shape))
+    return getindex.(Ref(CI), indices)
+end
+
+function test_lin_cart()
+    shape = (3,4,2)
+    cndx = [(3,1,1), (2,2,1)]
+    lndx = cart2lin(shape, cndx)
+    @assert lndx == [3,5]
+
+    shapes = [(3,4,2), (4,1,5,2)]
+    for shape in shapes
+        K = prod(shape)
+        cndx = lin2cart(shape, 1:K)
+        lndx = cart2lin(shape, cndx)
+        @assert lndx == 1:K
+    end
+end
+
+
 
 ind2subv_array_test()
 ind2subv_test()

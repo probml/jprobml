@@ -1,7 +1,8 @@
-
-
-#####
-# Map linear indices to Caresian indices
+"""
+Code to Map linear indices to/from Caresian indices
+#https://discourse.julialang.org/t/psa-replacement-of-ind2sub-sub2ind-in-julia-0-7/14666/26
+"""
+using Test
 
 function ind2subv_str(dims)
     """Create array A where i'th row is a set of cartesian indices (1 indexed)
@@ -33,12 +34,21 @@ function ind2subv_str_test()
     @assert indices == [1 1; 1 2; 1 3; 2 1; 2 2; 2 3; 3 1; 3 2; 3 3]
 end
 
+function foo()
+    map(collect(-3:3)) do x
+        if x == 0 return 0
+        elseif iseven(x) return 2
+        elseif isodd(x) return 1
+        end
+    end
+end
+
 
 
 function ind2sub_array(shape, idx; rowmajor=true)
     # Translated from
     # https://stackoverflow.com/questions/46782444/how-to-convert-a-linear-index-to-subscripts-with-support-for-negative-strides
-    # matlab/julia is rowmajor, python/C is columnmajor
+    # matlab/julia is column major, python/C is row mmajor
     idx = idx - 1 # switch to 0-based indexing
     d = length(shape)
     out = Array{Int}(undef, d)
@@ -169,7 +179,8 @@ end
 
 
 function mystrides(shape::Array{Int,1}; rowmajor=true)::Array{Int}
-    # matlab/julia is rowmajor, python/C is columnmajor
+    # matlab/julia is column major (first index changes fastest),
+    # python/C is row major
     n = length(shape)
     str = ones(n)
     if rowmajor
@@ -264,13 +275,14 @@ function subv2ind_test()
     end
 end
 
-function cart2lin(shape, cindices)
+function cart2lin(shape, indices)
     """
     Transform vector of cartesian indices to linear indices, cf ind2subv.
     Example:
     cart2lin([3,4,2],[CI(3,1,1), CI(2,2,1)]) =  [3, 5]
     """
     lndx = LinearIndices(Dims(shape))
+    cindices = [CartesianIndex(i) for i in indices]
     return getindex.(Ref(lndx), cindices)
 end
 
@@ -285,18 +297,19 @@ function lin2cart(shape, indices)
     return getindex.(Ref(CI), indices)
 end
 
-function test_lin_cart()
+
+
+function lin_cart_test()
     shape = (3,4,2)
     cndx = [(3,1,1), (2,2,1)]
     lndx = cart2lin(shape, cndx)
-    @assert lndx == [3,5]
-
+    @test lndx == [3,5]
     shapes = [(3,4,2), (4,1,5,2)]
     for shape in shapes
         K = prod(shape)
         cndx = lin2cart(shape, 1:K)
         lndx = cart2lin(shape, cndx)
-        @assert lndx == 1:K
+        @test lndx == 1:K
     end
 end
 
@@ -306,5 +319,6 @@ ind2subv_array_test()
 ind2subv_test()
 subv2ind_array_test()
 subv2ind_test()
+lin_cart_test()
 
 println("all tests passed")

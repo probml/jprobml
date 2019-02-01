@@ -11,6 +11,8 @@ z(μ, logσ) = μ + exp(logσ) * randn(Float32)
 # Generative model / "decoder" MLP.
 f = Chain(Dense(Dz, Dh, tanh), Dense(Dh, 28^2, σ))
 
+
+
 using Distributed
 # parallel loops:
 

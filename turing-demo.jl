@@ -1,5 +1,5 @@
 using Turing
-using StatPlots
+using StatsPlots
 
 # Define a simple Normal model with unknown mean and variance.
 @model gdemo(x, y) = begin

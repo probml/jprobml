@@ -167,6 +167,17 @@ gradloss(wp) = (back!(loss(wp)); wp.grad)
 dloss(w) = 2*(X1t * X1 * w - X1t * ytrue)
 @test isapprox(gradloss(wp), dloss(wp), 1e-2)
 
-#NLOPT_LD_LBFGS
-#vector_storage!
-#https://github.com/JuliaOpt/NLopt.jl
+
+using Optim
+x0 = zeros(2)
+result1 = optimize(rosenbrock, x0, LBFGS(m=5))
+sol1 = Optim.minimizer(result1)
+ncalls1 = result1.iterations
+
+result2 = optimize(rosenbrock, x0, LBFGS(m=5); autodiff = :forward)
+sol2 = Optim.minimizer(result2)
+ncalls2 = result2.iterations
+
+result3 = optimize(rosenbrock, rosenbrock_grad!, x0, LBFGS(m=5))
+sol3 = Optim.minimizer(result3)
+ncalls3 = result3.iterations

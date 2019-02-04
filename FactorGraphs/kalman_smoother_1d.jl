@@ -3,7 +3,7 @@
 
 # Data
 Random.seed!(1)
-n_samples = 20
+n_samples = 10
 x_data = [t for t=1:n_samples] # State
 y_data = x_data + sqrt(200.0)*randn(n_samples); # Noisy observations of state
 

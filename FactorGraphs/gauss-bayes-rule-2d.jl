@@ -1,31 +1,30 @@
 # Bayes rule for a linear Gaussian model
 # X -> Y, observe Y, infer X
-# Y ~ N(A x + b, R)
-# X ~ N(mu, Q)
+# Y ~ N(A x + b, Sigma_y)
+# X ~ N(mu_x, Sigma_x)
 
-# We consider the example from MLAPP sec 4.4.2.2
-# where A=I, b=0, mu=[0.5 0.5], Q=0.1I, R=0.1*[2 1; 1 1]
-#https://github.com/probml/pmtk3/blob/master/demos/gaussInferParamsMean2d.m
+# We consider the example from "Machine learning: a probabilistic perspective"
+# (Murphy, 2012) sec 4.4.2.2.
+# where A=I, b=0, mu=[0.5 0.5], Sigma_x=0.1I, Sigma_y=0.1*[2 1; 1 1]
+# Corresponding Matlab code is here:
+# https://github.com/probml/pmtk3/blob/master/demos/gaussInferParamsMean2d.m
 
 using ForneyLab
-import LinearAlgebra:Diagonal
-using Distributions
+using LinearAlgebra, Distributions, Test
 
 function make_data(params, n_data)
-    y_mean = params.true_x
-    y_dist = Distributions.MvNormal(y_mean, params.R)
+    y_mean = params.A * params.true_x  + params.b
+    y_dist = Distributions.MvNormal(y_mean, params.Sigma_y)
     y_data_all = rand(y_dist, n_data) # n_data x obs_dim
-    y_data = vec(mean(y_data_all, dims=2))
-    return y_data, y_data_all
+    return y_data_all
 end
 
-function make_factor_graph(params, n_data)
+function make_factor_graph(params)
     g = FactorGraph()
-    @RV x ~ GaussianMeanVariance(params.mu_x, params.Q)
-    mu_y = x
-    Robs = (1.0/n_data)*params.R # since observing average of data
-    @RV y ~ GaussianMeanVariance(mu_y, Robs)
-    placeholder(y, :y, dims=(2,))
+    @RV x ~ GaussianMeanVariance(params.mu_x, params.Sigma_x)
+    mu_y = params.A * x + params.b
+    @RV y ~ GaussianMeanVariance(mu_y, params.Sigma_y)
+    placeholder(y, :y, dims=(length(params.b),))
     fg = (x = x, y = y)
     return fg
 end
@@ -43,68 +42,82 @@ function make_fg_inference(fg)
     return infer
 end
 
+function bayes_rule_lin_gauss(params, y)
+    # Implements eqn 4.125 of MLAPP
+    A = params.A
+    At = permutedims(A)
+    b = params.b
+    prior_prec = inv(params.Sigma_x)
+    prior_mean = params.mu_x
+    obs_prec = inv(params.Sigma_y)
+    post_prec = prior_prec + At * obs_prec * A
+    post_cov = inv(post_prec)
+    post_mean = post_cov*(At * obs_prec * (y-b) + prior_prec * prior_mean)
+    post_gauss = Distributions.MvNormal(post_mean, post_cov)
+    return post_gauss
+end
+
+#=
+params = Dict(
+    :true_x => [0.5, 0.5],
+     :mu_x => [0.0, 0.0],
+     :Sigma_x => 0.1 * eye(2),
+     :A => eye(2),
+     :b => [0.0, 0.0],
+     :Sigma_y => 0.1 .* [2 1; 1 1]
+     )
+=#
+
+ params_gen =
+     (true_x = [0.5, 0.5],
+      mu_x = [0.0, 0.0],
+      Sigma_x = 0.1 * eye(2),
+      A = eye(2),
+      b = [0.0, 0.0],
+      Sigma_y = 0.1 .* [2 1; 1 1]
+      )
+
+n_data = 10
+Random.seed!(1)
+y_data_all = make_data(params_gen, n_data)
+y_data_mean = vec(mean(y_data_all, dims=2))
+
 params =
     (true_x = [0.5, 0.5],
      mu_x = [0.0, 0.0],
-     Q = 0.1 * eye(2),
-     R = 0.1 .* [2 1; 1 1]
+     Sigma_x = 0.1 * eye(2),
+     A = eye(2),
+     b = [0.0, 0.0],
+     Sigma_y = 0.1 .* [2 1; 1 1] / n_data # since using average of observations
      )
-
-prior_gauss = Distributions.MvNormal(params.mu_x, params.Q)
-n_data = 10
-Random.seed!(1)
-y_data, y_data_all = make_data(params, n_data)
-fg = make_factor_graph(params, n_data)
+fg = make_factor_graph(params)
 infer = make_fg_inference(fg)
-post_gauss = infer(y_data)
+post_gauss = infer(y_data_mean)
+post_gauss2 = bayes_rule_lin_gauss(params, y_data_mean)
+@test isapprox(mean(post_gauss), mean(post_gauss2))
+@test isapprox(cov(post_gauss), cov(post_gauss2))
 
 using Plots; pyplot()
+closeall()
 xrange = -1.5:0.01:1.5
 yrange = xrange
-scatter(y_data_all[1,:], y_data_all[2,:], label="obs", reuse=false)
+plt = scatter(y_data_all[1,:], y_data_all[2,:], label="obs", reuse=false)
 scatter!([params.true_x[1]], [params.true_x[2]], label="truth")
 xlims!(minimum(xrange), maximum(xrange))
 ylims!(minimum(xrange), maximum(xrange))
 title!("Data")
 savefig("Figures/gauss-bayes-rule-2d-data.png")
+display(plt)
 
-contour(xrange, yrange, (x,y)->Distributions.pdf(prior_gauss,[x,y]),
+prior_gauss = Distributions.MvNormal(params.mu_x, params.Sigma_x)
+plt = contour(xrange, yrange, (x,y)->Distributions.pdf(prior_gauss,[x,y]),
     reuse=false, title="prior")
-contour(xrange, yrange, (x,y)->Distributions.pdf(post_gauss,[x,y]),
+savefig("Figures/gauss-bayes-rule-2d-prior.png")
+display(plt)
+
+plt = contour(xrange, yrange, (x,y)->Distributions.pdf(post_gauss,[x,y]),
     reuse=false, title = "Posterior")
+savefig("Figures/gauss-bayes-rule-2d-post.png")
+display(plt)
 
-#=
-
-import ForneyLab
-const FL = ForneyLab
-import ForneyLab.@RV
-import LinearAlgebra
-
-function make_model()
-    g = FL.FactorGraph()
-
-    Q = 0.1*FL.eye(2)
-    mu_x = [0.5, 0.5]
-    A = FL.eye(2)
-    b = [0.0, 0.0]
-    R = 0.1 .* [2 1; 1 1]
-    y_data = A*mu_x + b + randn(2) # Should sample using noise ~ R
-
-    @RV x ~ FL.GaussianMeanVariance(mu_x, Q)
-    #@RV obs_noise ~ GaussianMeanVariance(zeros(nobs), R)
-    #@RV y = A*x + b + obs_noise
-    mu_y = A*x + b
-    @RV y ~ FL.GaussianMeanVariance(mu_y, R)
-    FL.placeholder(y, :y, dims=(nobs,)) # add clamping
-
-    return x, y, y_data
-end
-
-x, y, y_data = make_model()
-
-algo = Meta.parse(FL.sumProductAlgorithm(x))
-eval(algo) # compile the step! function
-data = Dict(:y     => y_data)
-marginals = step!(data);
-post = marginals[:x]
-=#
+# foo

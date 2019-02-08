@@ -177,3 +177,64 @@ end
 @assert fac(4) == fac2(4)
 typeof(fac(100))
 =#
+
+#=
+# https://stackoverflow.com/questions/20126061/creating-a-confidence-ellipses-in-a-sccatterplot-using-matplotlib
+lambda = LinearAlgebra.eigvals(C)
+V = LinearAlgebra.eigvecs(C)
+lambda = sqrt.(lambda)
+sf = 2 # 2 std dev
+angle=rad2deg(cos(V[1, 1]))
+ax = plt.subplot(111, aspect="equal")
+ell = patch.Ellipse(xy=(m[1], m[2]),
+                  width=lambda[1]*sf*2, height=lambda[2]*sf*2, angle=angle)
+ell.set_facecolor("none")
+ax[:add_artist](ell)
+ax.add_artist(ell)
+gcf()
+
+
+#https://stackoverflow.com/questions/30351546/using-matplotlibs-patches-in-julia
+using PyPlot
+using PyCall
+@pyimport matplotlib.patches as patch
+
+function plot_2dgauss(m, C)
+    cfig = figure()
+    ax = cfig[:add_subplot](1,1,1)
+    ax[:set_aspect]("equal")
+
+    lambda = LinearAlgebra.eigvals(C)
+    V = LinearAlgebra.eigvecs(C)
+    lambda = sqrt.(lambda)
+    sf = 2 # number of  std deviations away
+    w = lambda[1] * sf
+    h = lambda[2] * sf
+    #theta = rad2deg(cos(V[1, 1]))
+    theta = np.degrees(np.arctan2(*vecs[:,0][::-1]))
+    ax = plt.subplot(111, aspect="equal")
+
+    c = patch.Ellipse(xy=(m[1], m[2]), fc="none",
+                      width=w, height=h, angle=theta)
+    #c = patch.Circle([0.5,0.5],0.4,fc="blue",ec="red",linewidth=.5,zorder=0)
+    ax[:add_artist](c)
+    cfig[:savefig]("circle.png")
+    gcf()
+end
+=#
+
+#=
+function plot_gauss2d(m, C, txt=nothing)
+    m_x, m_y = m[1], m[2]
+    s_x, s_y = sqrt(C[1, 1]), sqrt(C[2, 2])
+    s_xy = C[1, 2]
+    xrange = range(m_x - 2*s_x, stop=m_x + 2*s_x, length=100)
+    yrange = range(m_y - 2*s_y, stop=m_y + 2*s_y, length=100)
+    dist = Distributions.MvNormal(m, C)
+    p = Distributions.pdf(dist, m)
+    s = mean([s_x, s_y])
+    plt = contour!(xrange, yrange, (x,y)->Distributions.pdf(dist,[x,y]), levels = [s*p])
+    if ~isnothing(txt); annotate!(m_x, m_y, txt); end
+    return plt
+end
+=#

@@ -8,6 +8,8 @@
 # where A=I, b=0, mu=[0.5 0.5], Sigma_x=0.1I, Sigma_y=0.1*[2 1; 1 1]
 # Corresponding Matlab code is here:
 # https://github.com/probml/pmtk3/blob/master/demos/gaussInferParamsMean2d.m
+# Figures should look like this
+# http://people.cs.ubc.ca/~murphyk/MLbook/figReport-16-Aug-2012/pdfFigures/gauss2dupdatePostSubplot.pdf
 
 using ForneyLab
 using LinearAlgebra, Distributions, Test
@@ -15,8 +17,8 @@ using LinearAlgebra, Distributions, Test
 function make_data(params, n_data)
     y_mean = params.A * params.true_x  + params.b
     y_dist = Distributions.MvNormal(y_mean, params.Sigma_y)
-    y_data_all = rand(y_dist, n_data) # n_data x obs_dim
-    return y_data_all
+    y_data = rand(y_dist, n_data) # n_data x obs_dim
+    return y_data
 end
 
 function make_factor_graph(params)
@@ -119,5 +121,3 @@ plt = contour(xrange, yrange, (x,y)->Distributions.pdf(post_gauss,[x,y]),
     reuse=false, title = "Posterior")
 savefig("Figures/gauss-bayes-rule-2d-post.png")
 display(plt)
-
-# foo

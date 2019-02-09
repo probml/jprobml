@@ -238,3 +238,27 @@ function plot_gauss2d(m, C, txt=nothing)
     return plt
 end
 =#
+
+
+
+#=
+# StatsModels.jl defines the Formula type and @formula macro
+# https://github.com/JuliaStats/StatsModels.jl/blob/4701a1bd221f6281371f254f69c2f95c19e02a92/src/formula.jl
+function make_formula_all_features(df, target)
+	col_symbols = Set(names(df))
+	feature_symbols = setdiff(col_symbols, Set([target]))
+	feature_strings = [string(s) for s in feature_symbols]
+	all_features = join(feature_strings, " + " )
+	formula = string(target) * " ~ " * all_features
+	return formula
+end
+
+function make_formula_test()
+	n = 10
+	df = DataFrame(X1=randn(n), X2=randn(n), Y=randn(n))
+	ols = lm(@formula(Y ~ X1 + X2), df)
+	formula = make_formula_all_features(df, :Y)
+	f_expr = Meta.parse(formula)
+	ols2 = lm(@formula(f_expr), df)
+end
+=#

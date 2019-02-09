@@ -19,7 +19,6 @@ function logreg_binary_predict(w, X)
 	return probs, labels, logits
 end
 
-
 function logreg_binary_sample(w, X)
 	probs = logreg_binary_predict(w, X)[1]
 	D, N = size(X)
@@ -72,8 +71,8 @@ import Optim
 function logreg_binary_fit_optim(X, y)
 	D, N = size(X)
 	w0 = randn(D)
-	objective(w) = logreg_binary_nll(w, X, Y)
-	grad(w) = logreg_binary_nll_grad(w, X, Y)
+	objective(w) = logreg_binary_nll(w, X, y)
+	grad(w) = logreg_binary_nll_grad(w, X, y)
 	solver = Optim.LBFGS(;linesearch = Optim.BackTracking())
 	opts = Optim.Options(iterations = 100)
 	result = Optim.optimize(objective, grad, w0, solver, opts; inplace=false)
@@ -81,58 +80,29 @@ function logreg_binary_fit_optim(X, y)
 	return w_est, result
 end
 
-import GLM, DataFrames
+using GLM, DataFrames
+#https://discourse.julialang.org/t/how-to-fit-a-glm-to-all-unnamed-features-of-arbitrary-design-matrix/20490/3
 function logreg_binary_fit_glm(X, y)
-	println("This will fail because . syntax not supported by GLM")
 	D, N = size(X)
 	Xt = permutedims(X)
-	df = DataFrame(Xt)
-	df[:y] = y
-	# regress on all inputs :x1 ... :xd
-	model = glm(@formula(y ~.), df, Binomial(), LogitLink())
+	df_y = DataFrame(y[:, :], [:yname])
+	df_x_names = [Symbol("x$i") for i in 1:size(Xt)[2]]
+	df_x = DataFrame(Xt, df_x_names)
+	df = hcat(df_y, df_x)
+	lhs = :yname
+	# include all variables :x1 to :xD but exclude intercept (hence -1)
+	rhs = Expr(:call, :+, -1, df_x_names...)
+	model = glm(@eval(@formula($(lhs) ~ $(rhs))), df, Bernoulli(), LogitLink())
 	return coef(model)
-	# The . notation is not supported in GLM.jl and the solution below fails.
-	# https://stackoverflow.com/questions/44222763/specify-only-target-variable-in-glm-jl
 end
-
-
 
 function logreg_binary_fit_test()
 	w, X, y = make_test_data_binary(;D=2)
 	w_est1, result = logreg_binary_fit_optim(X, y)
-	#w_est2 = logreg_binary_fit_glm(X, y)
-	Xt = permutedims(X)
-	df = DataFrame(Xt)
-	df[:y] = y
-	# Fit data without an intercept term by specifying -1
-	model = glm(@formula(y ~ x1 + x2 -1), df, Binomial(), LogitLink())
-	w_est2 = coef(model)
+	w_est2 = logreg_binary_fit_glm(X, y)
 	@test isapprox(w_est1, w_est2; atol=0.01)
 end
 
 logreg_binary_nll_test()
 logreg_binary_nll_grad_test()
 logreg_binary_fit_test()
-
-
-#=
-# StatsModels.jl defines the Formula type and @formula macro
-# https://github.com/JuliaStats/StatsModels.jl/blob/4701a1bd221f6281371f254f69c2f95c19e02a92/src/formula.jl
-function make_formula_all_features(df, target)
-	col_symbols = Set(names(df))
-	feature_symbols = setdiff(col_symbols, Set([target]))
-	feature_strings = [string(s) for s in feature_symbols]
-	all_features = join(feature_strings, " + " )
-	formula = string(target) * " ~ " * all_features
-	return formula
-end
-
-function make_formula_test()
-	n = 10
-	df = DataFrame(X1=randn(n), X2=randn(n), Y=randn(n))
-	ols = lm(@formula(Y ~ X1 + X2), df)
-	formula = make_formula_all_features(df, :Y)
-	f_expr = Meta.parse(formula)
-	ols2 = lm(@formula(f_expr), df)
-end
-=#

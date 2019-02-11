@@ -1,5 +1,5 @@
 
-using Test, LinearAlgebra
+using Test, LinearAlgebra, Flux
 
 #https://discourse.julialang.org/t/psa-replacement-of-ind2sub-sub2ind-in-julia-0-7/14666/20
 function lin2cart(shape, indices)
@@ -56,7 +56,67 @@ function plot_gauss2d_test()
     plot_2dgauss(m, C)
 end
 
-function foo(x::Real)
-    println(x)
-    y = Array{Real}(2)
+#Compute scalar-valued function fn(x) and its derivative using Flux's
+#revere mode AD.
+function fun_and_grad(fn, x)
+  # Based on https://github.com/tpapp/LogDensityProblems.jl/blob/master/src/AD_Flux.jl
+  y, back = Flux.Tracker.forward(fn, x)
+  yval = Flux.Tracker.data(y)
+  g = first(Flux.Tracker.data.(back(1)))
+  return yval, g
+end
+
+function fun_and_grad_test()
+	f(x) = x[1]^2 + 100*x[2]^2
+	g(x) = [2*x[1], 200*x[2]]
+	x = [1,1]
+	y1 = f(x)
+	g1 = g(x)
+	y2, g2 = fun_and_grad(f, x)
+	@test isapprox(y1, y2)
+	@test isapprox(g1, g2)
+end
+
+
+
+#http://julianlsolvers.github.io/Optim.jl/stable/#user/minimization/
+# The minimum value of 0.0 is at (a,a^2).
+function rosenbrock(x; a=1.0, b=100.0)
+  return (a - x[1])^2 + b * (x[2] - x[1]^2)^2
+end
+
+function rosenbrock_grad!(g, x; a=1.0, b=100.0)
+	g[1] = -2.0 * (a-x[1]) -4*b*(x[2] - x[1]^2) * x[1]
+	g[2] = 2.0 * b * (x[2] - x[1]^2)
+end
+
+function rosenbrock_grad(x; a=1.0, b=100.0)
+  g = Vector{Float64}(undef, 2)
+  rosenbrock_grad!(g, x, a=a, b=b)
+  return g
+end
+
+function rosenbrock_hessian(x; a=1.0, b=100.0)
+	H = zeros(2,2)
+	H[1,1] = 2 + 8*b * x[2];
+	H[1,2] = -4 * b * x[1];
+	H[2,1] = H[1,2];
+	H[2,2] = 2 * b;
+	return H
+end
+
+function rosenbrock_condition()
+	H = rosenbrock_hessian([1,1])
+	println("condition number = $(cond(H))")
+	evals = eigvals(H)
+	@assert isapprox(cond(H), evals[2]/evals[1])
+end
+
+function rosenbrock_grad_test()
+  x = randn(2)
+  y, g = fun_and_grad(rosenbrock, x)
+  @test isapprox(y, rosenbrock(x))
+  @test isapprox(g, rosenbrock_grad(x))
+  g2 = Tracker.gradient(rosenbrock, x)[1]
+  @test isapprox(g, g2)
 end

@@ -1,16 +1,26 @@
 # Based on
 #https://github.com/sisl/algforopt-notebooks/blob/master/second-order.ipynb
 
-using Vec
 using LinearAlgebra
 
+include("first-order.jl")
 
-
-
-abstract type DescentMethod end
-mutable struct DFP <: DescentMethod
-	Q
+function _line_search(f, x, d)
+	d = normalize(d)
+	objective = α -> f(x + α*d)
+	v, α = f(x), 1e-6
+	while f(x + α*d) < v
+		v = f(x + α*d)
+		α += 1e-6
+	end
+	return x + α*d
 end
+
+#abstract type DescentMethod end
+mutable struct DFP <: DescentMethod
+	Q::Matrix{Real}
+end
+DFP() = DFP(Matrix{Real}(undef, 0, 0))
 function init!(M::DFP, f, ∇f, x)
 	M.Q = Matrix(1.0I, length(x), length(x))
 	return M
@@ -25,14 +35,15 @@ function step!(M::DFP, f, ∇f, x)
     return x′
 end
 
-mutable struct myBFGS <: DescentMethod
-	Q
+mutable struct BFGS <: DescentMethod
+	Q::Matrix{Real}
 end
-function init!(M::myBFGS, f, ∇f, x)
+BFGS() = BFGS(Matrix{Real}(undef, 0, 0))
+function init!(M::BFGS, f, ∇f, x)
 	M.Q = Matrix(1.0I, length(x), length(x))
 	return M
 end
-function step!(M::myBFGS, f, ∇f, x)
+function step!(M::BFGS, f, ∇f, x)
 	Q, g = M.Q, ∇f(x)
 	x′ = _line_search(f, x, -Q*g)
 	g′ = ∇f(x′)
@@ -42,19 +53,20 @@ function step!(M::myBFGS, f, ∇f, x)
     return x′
 end
 
-mutable struct LimitedMemoryBFGS <: DescentMethod
-	m
-	δs
-	γs
-	qs
+mutable struct LBFGS <: DescentMethod
+	m::Int # memory length
+	δs::Array{Vector{Real},1}
+	γs::Array{Vector{Real},1}
+	qs::Array{Vector{Real},1}
 end
-function init!(M::LimitedMemoryBFGS, f, ∇f, x)
+LBFGS(m) = LBFGS(m, Array{Vector{Real},1}(), Array{Vector{Real},1}(), Array{Vector{Real},1}())
+function init!(M::LBFGS, f, ∇f, x)
 	M.δs = []
 	M.γs = []
     M.qs = []
 	return M
 end
-function step!(M::LimitedMemoryBFGS, f, ∇f, x)
+function step!(M::LBFGS, f, ∇f, x)
     δs, γs, qs, g = M.δs, M.γs, M.qs, ∇f(x)
     m = length(δs)
     if m > 0
@@ -72,7 +84,8 @@ function step!(M::LimitedMemoryBFGS, f, ∇f, x)
         x′ = _line_search(f, x, -g)
     end
     g′ = ∇f(x′)
-    push!(δs, x′ - x); push!(γs, g′ - g)
+    push!(δs, x′ - x);
+	push!(γs, g′ - g)
     push!(qs, zeros(length(x)))
     while length(δs) > M.m
         popfirst!(δs); popfirst!(γs); popfirst!(qs)

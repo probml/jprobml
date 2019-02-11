@@ -5,6 +5,7 @@
 #include("support_code.jl");
 #using Plots
 #using Vec
+include("utils.jl")
 
 # A4O p36
 function bracket_minimum(f, x=0; s=1e-2, k=2.0)
@@ -39,32 +40,42 @@ function secant_method(df, x1, x2, ϵ)
 end
 
 # A4O p54
-#=
-function line_search_abstract(f, x, d)
+function line_search_secant(f, dfn, x, d)
     objective = α -> f(x + α*d)
     a, b = bracket_minimum(objective)
-    α = minimize(objective, a, b)
-    return x + α*d
+    #α = minimize(objective, a, b)
+	f1d = a -> begin
+		xnew = x + a*d
+		g2 = dfn(xnew)
+		v1 = dot(g2, d) / norm(d)
+		return v1
+	end
+	α = secant_method(f1d, a, b, 0.0001)
+	#println("ls secant chose $α")
+    return α
 end
-=#
+
 
 
 # A40 p56
 using LinearAlgebra
-function backtracking_line_search(f, ∇f, x, d; α=1.0, p=0.5, β=1e-4, max_iter=50)
+function line_search_backtracking(f, ∇f, x, d; α=1.0, p=0.5, β=1e-4, max_iter=50)
 	y, g = f(x), ∇f(x)
 	iter = 1
 	while (iter <= max_iter) && (f(x + α*d) > y + β*α*(g⋅d))
 		α *= p
-		println("line search iter $iter, $α")
+		#println("line search iter $iter, $α")
 		iter += 1
 	end
-	println("chose $α")
-	α
+	#println("backtracking ls chose $α")
+	return α
 end
 
+import LineSearches
 #https://julianlsolvers.github.io/LineSearches.jl/latest/examples/generated/customoptimizer.html
-function line_search_wrapper(f, g, x, d, linesearch_fn)
+function line_search_backtracking_optim(f, g, x, d)
+	linesearch_fn = LineSearches.BackTracking(order=3)
+	#linesearch_fn = LineSearches.HagerZhang()
 	s = d
 	ϕ(α) = f(x .+ α.*s)
     function dϕ(α)
@@ -81,7 +92,7 @@ function line_search_wrapper(f, g, x, d, linesearch_fn)
 	gvec = g(x)
 	dϕ_0 = dot(s, gvec)
 	α, fx = linesearch_fn(ϕ, dϕ, ϕdϕ, 1.0, fx, dϕ_0)
-	#println("line search iter chose $α")
+	#println("optim ls chose $α")
 	return α
 end
 
@@ -102,24 +113,30 @@ function step!(M::GradientDescent, f, ∇f, x)
 	return x - α*g
 end
 
-using LineSearches
+
 struct GradientDescentLineSearch <: DescentMethod
-	linesearch_fn
 end
-# default constructor
-GradientDescentLineSearch() =
-	GradientDescentLineSearch(LineSearches.BackTracking(order=3))
 
 function init!(M::GradientDescentLineSearch, f, ∇f, x)
 	return M
 end
 function step!(M::GradientDescentLineSearch, f, ∇f, x)
 	d =  -normalize(∇f(x))
-	α = line_search_wrapper(f,  ∇f, x, d, M.linesearch_fn)
-	#α = backtracking_line_search(f,  ∇f, x, d)
+	α = line_search_backtracking(f,  ∇f, x, d)
 	return x + α*d
 end
 
+struct GradientDescentLineSearchExact <: DescentMethod
+end
+
+function init!(M::GradientDescentLineSearchExact, f, ∇f, x)
+	return M
+end
+function step!(M::GradientDescentLineSearchExact, f, ∇f, x)
+	d =  -normalize(∇f(x))
+	α = line_search_secant(f,  ∇f, x, d)
+	return x + α*d
+end
 
 mutable struct Momentum <: DescentMethod
 	α::Real # learning rate
@@ -127,7 +144,7 @@ mutable struct Momentum <: DescentMethod
 	v::Vector{Real} # momentum
 end
 # default constructor
-Momentum(α) = Momentum(α, 0.9, Vector{Real})
+Momentum(α) = Momentum(α, 0.9, Vector{Real}())
 
 function init!(M::Momentum, f, ∇f, x)
 	M.v = zeros(length(x))
@@ -145,7 +162,7 @@ mutable struct NesterovMomentum <: DescentMethod
 		v::Vector{Real} # momentum
 end
 # default constructor
-NesterovMomentum(α) = NesterovMomentum(α, 0.9, Vector{Real})
+NesterovMomentum(α) = NesterovMomentum(α, 0.9, Vector{Real}())
 
 function init!(M::NesterovMomentum, f, ∇f, x)
 	M.v = zeros(length(x))
@@ -204,7 +221,7 @@ mutable struct Adadelta <: DescentMethod
 	u::Vector{Real} # sum of squared updates
 end
 # default constructor
-Adaddelta() = Adedelta(0.8, 0.8, 1e-8, Vector{Real}, Vector{Real})
+Adadelta() = Adadelta(0.9, 0.9, 1e-8, Vector{Real}(), Vector{Real}())
 
 function init!(M::Adadelta, f, ∇f, x)
 	M.s = zeros(length(x))
@@ -229,7 +246,7 @@ mutable struct Adam <: DescentMethod
 	s::Vector{Real} # 2nd moment estimate
 end
 # default constructor
-Adam(α) = Adam(α, 0.9, 0.999, 1e-8, 0, Vector{Real}, Vector{Real})
+Adam(α) = Adam(α, 0.9, 0.999, 1e-8, 0, Vector{Real}(), Vector{Real}())
 
 function init!(M::Adam, f, ∇f, x)
 	M.k = 0
@@ -255,7 +272,7 @@ mutable struct HyperGradientDescent <: DescentMethod
 	g_prev::Vector{Real} # previous gradient
 end
 # default constructor
-HyperGradientDescent(α0) = HyperGradientDescent(α0, 1e-8, NaN, Vector{Real})
+HyperGradientDescent(α0, μ) = HyperGradientDescent(α0, μ, NaN, Vector{Real}())
 
 function init!(M::HyperGradientDescent, f, ∇f, x)
 	M.α = M.α0
@@ -279,12 +296,11 @@ function run_descent_method(M::DescentMethod, f, ∇f,  x0;
 	done = false
     init!(M, f, ∇f, x)
     for iter = 1:max_iter
-		x = step!(M, f, ∇f, x)
+		x = step!(M, f, ∇f, x);
 		done = callback(M, f, ∇f, x, iter)
         if done; break; end
     end
 	return x
 end
 
-function run_descent_method_with_logging(M::DescentMethod, f, ∇f, x0)
-end
+####################

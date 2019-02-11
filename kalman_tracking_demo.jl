@@ -4,6 +4,7 @@
 
 using  LinearAlgebra, Test
 import Distributions
+include("kalman_qe.jl")
 
 function make_params()
     F = [1 0 1 0; 0 1 0 1; 0 0 1 0; 0 0 0 1.0];
@@ -37,7 +38,7 @@ function kalman_sample(kn::Kalman, T::Int)
     return xs, ys
 end
 
-include("kalman.jl")
+
 function kalman_filter(kn::Kalman, y::AbstractMatrix)
     obs_size, T = size(y)
     n = size(kn.G, 2)

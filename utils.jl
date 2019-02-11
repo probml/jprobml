@@ -55,3 +55,8 @@ function plot_gauss2d_test()
     Plots.scatter([m[1]], [m[2]], marker=:star)
     plot_2dgauss(m, C)
 end
+
+function foo(x::Real)
+    println(x)
+    y = Array{Real}(2)
+end

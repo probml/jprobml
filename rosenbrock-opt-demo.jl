@@ -4,6 +4,8 @@
 # run from there, and then visualize the trajectory.
 #https://bl.ocks.org/EmilienDupont/f97a3902f4f3a98f350500a3a00371db
 
+#https://commons.wikimedia.org/wiki/File:Banana-SteepDesc.gif
+
 import Flux
 import Optim
 using Test

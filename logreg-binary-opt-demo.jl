@@ -84,15 +84,16 @@ using GLM, DataFrames
 #https://discourse.julialang.org/t/how-to-fit-a-glm-to-all-unnamed-features-of-arbitrary-design-matrix/20490/3
 function logreg_binary_fit_glm(X, y)
 	D, N = size(X)
-	Xt = permutedims(X)
-	df_y = DataFrame(y[:, :], [:yname])
-	df_x_names = [Symbol("x$i") for i in 1:size(Xt)[2]]
-	df_x = DataFrame(Xt, df_x_names)
-	df = hcat(df_y, df_x)
-	lhs = :yname
+	Xcol = permutedims(X)
+	model = fit(GeneralizedLinearModel, Xcol, y, Bernoulli())
+	#df_y = DataFrame(y[:, :], [:yname])
+	#df_x_names = [Symbol("x$i") for i in 1:size(Xt)[2]]
+	#df_x = DataFrame(Xt, df_x_names)
+	#df = hcat(df_y, df_x)
+	#lhs = :yname
 	# include all variables :x1 to :xD but exclude intercept (hence -1)
-	rhs = Expr(:call, :+, -1, df_x_names...)
-	model = glm(@eval(@formula($(lhs) ~ $(rhs))), df, Bernoulli(), LogitLink())
+	#rhs = Expr(:call, :+, -1, df_x_names...)
+	#model = glm(@eval(@formula($(lhs) ~ $(rhs))), df, Bernoulli(), LogitLink())
 	return coef(model)
 end
 

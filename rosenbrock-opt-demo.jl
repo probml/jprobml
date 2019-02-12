@@ -73,16 +73,13 @@ expts = Tuple{DescentMethod, String}[]
 #push!(expts, (GradientDescentLineSearch(), "GD-linesearch"))
 #push!(expts, (GradientDescent(0.01), "GD-0.01"))
 #push!(expts, (GradientDescent(0.05), "GD-0.05"))
-#=
-push!(expts, (Momentum(0.005, 0.9, zeros(2)), "momentum"))
-push!(expts, (NesterovMomentum(0.005, 0.9, zeros(2)), "nesterov"))
+push!(expts, (Momentum(0.005), "momentum"))
+push!(expts, (NesterovMomentum(0.005), "nesterov"))
 push!(expts, (Adagrad(0.2), "Adagrad"))
 push!(expts, (RMSProp(0.2), "RMSProp"))
 push!(expts, (Adadelta(), "AdaDelta"))
-#push!(expts, (Adam(0.2), "Adam"))
-#push!(expts, (HyperGradientDescent(0.05, 2e-5), "hyper-GD"))
-=#
-
+push!(expts, (Adam(0.2), "Adam"))
+push!(expts, (HyperGradientDescent(0.05, 2e-5), "hyper-GD"))
 push!(expts, (BFGS(), "BFGS"))
 push!(expts, (LBFGS(5), "LBFGS"))
 push!(expts, (DFP(), "DFP"))

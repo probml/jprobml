@@ -1,6 +1,8 @@
 # Modified from
 #https://github.com/sisl/algforopt-notebooks/blob/master/first-order.ipynb
 
+# See also
+# https://github.com/FluxML/Flux.jl/blob/master/src/optimise/optimisers.jl
 
 #include("support_code.jl");
 #using Plots

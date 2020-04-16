@@ -1,0 +1,29 @@
+#https://github.com/Dsantra92/Julia-on-Colab/blob/master/julia_on_collab.ipynb
+#https://stackoverflow.com/questions/58270424/julia-in-google-colab
+
+!curl -sSL "https://julialang-s3.julialang.org/bin/linux/x64/1.4/julia-1.4.0-linux-x86_64.tar.gz" -o julia.tar.gz
+!tar -xzf julia.tar.gz -C /usr --strip-components 1
+!rm -rf julia.tar.gz*
+!julia -e 'using Pkg; pkg"add IJulia; precompile"'
+
+
+
+using Pkg
+pkg"add BenchmarkTools; precompile;"
+pkg"add CuArrays; precompile;"
+
+using BenchmarkTools
+mcpu = rand(2^10, 2^10)
+@benchmark mcpu*mcpu
+
+
+using CuArrays
+mgpu = cu(mcpu)
+@benchmark CuArrays.@sync mgpu*mgpu
+
+
+
+
+
+!julia -e 'using Pkg; pkg"add IJulia; add CuArrays; add Flux; precompile"'
+
